@@ -132,16 +132,16 @@
   </div>
 
   <div class="apikey-section">
-    <div class="section-label" style="margin-bottom:8px;">Anthropic API key</div>
+    <div class="section-label" style="margin-bottom:8px;">Google Gemini API key <span style="font-weight:400;color:#27a06b;">(free)</span></div>
     <div class="apikey-row">
-      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
+      <input type="password" id="apiKeyInput" placeholder="AIza..." autocomplete="off" />
       <button class="apikey-save-btn" onclick="saveApiKey()">Save key</button>
     </div>
     <div class="apikey-saved-badge" id="apiKeySavedBadge">Key saved to browser storage</div>
     <div class="apikey-warn" id="apiKeyWarn">An API key is required to generate messages.</div>
     <p class="apikey-note">
-      Your key is stored only in your browser's localStorage and never sent anywhere except directly to Anthropic.
-      Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+      Free — 1,500 requests/day, no credit card needed. Your key is stored only in your browser's localStorage.
+      Get a free key at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
     </p>
   </div>
 
@@ -321,7 +321,7 @@ async function generateMessage() {
     return;
   }
 
-  const apiKey = localStorage.getItem("meshyAnthropicKey") || "";
+  const apiKey = localStorage.getItem("meshyGeminiKey") || "";
   if (!apiKey) {
     document.getElementById("apiKeyWarn").style.display = "block";
     document.getElementById("apiKeyInput").focus();
@@ -358,18 +358,12 @@ Bio/context: ${bio || "Not provided"}
 Output ONLY the message text. No subject line, no label, no preamble.`;
 
   try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5",
-        max_tokens: 1000,
-        messages: [{ role: "user", content: prompt }]
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 1000 }
       })
     });
     const data = await res.json();
@@ -378,7 +372,7 @@ Output ONLY the message text. No subject line, no label, no preamble.`;
       document.getElementById("status").textContent = "API error " + res.status + ": " + errMsg;
       return;
     }
-    const text = (data.content?.map(b => b.text || "").join("") || "").trim();
+    const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
     if (!text) {
       document.getElementById("status").textContent = "API error: empty response. Raw: " + JSON.stringify(data);
       return;
@@ -418,7 +412,7 @@ function saveApiKey() {
     document.getElementById("apiKeyWarn").style.display = "block";
     return;
   }
-  localStorage.setItem("meshyAnthropicKey", val);
+  localStorage.setItem("meshyGeminiKey", val);
   const badge = document.getElementById("apiKeySavedBadge");
   badge.style.display = "block";
   document.getElementById("apiKeyWarn").style.display = "none";
@@ -426,7 +420,7 @@ function saveApiKey() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const saved = localStorage.getItem("meshyAnthropicKey");
+  const saved = localStorage.getItem("meshyGeminiKey");
   if (saved) {
     document.getElementById("apiKeyInput").value = saved;
     document.getElementById("apiKeySavedBadge").style.display = "block";
