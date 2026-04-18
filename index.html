@@ -373,8 +373,17 @@ Output ONLY the message text. No subject line, no label, no preamble.`;
       })
     });
     const data = await res.json();
-    const text = data.content?.map(b => b.text || "").join("") || "Something went wrong. Please try again.";
-    document.getElementById("outputText").textContent = text.trim();
+    if (!res.ok) {
+      const errMsg = data.error?.message || JSON.stringify(data);
+      document.getElementById("status").textContent = "API error " + res.status + ": " + errMsg;
+      return;
+    }
+    const text = (data.content?.map(b => b.text || "").join("") || "").trim();
+    if (!text) {
+      document.getElementById("status").textContent = "API error: empty response. Raw: " + JSON.stringify(data);
+      return;
+    }
+    document.getElementById("outputText").textContent = text;
     document.getElementById("outputArea").style.display = "block";
     document.getElementById("status").textContent = "Message generated for " + name + " at " + company;
   } catch (e) {
