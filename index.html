@@ -82,6 +82,19 @@
     .page { padding: 1.25rem 1rem; }
     .tab-btn { padding: 0 0.75rem; font-size: 12px; }
   }
+
+  /* ── API key section ── */
+  .apikey-section { background: #fff; border: 1px solid #e0dfd8; border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .apikey-row { display: flex; align-items: center; gap: 10px; }
+  .apikey-row input { flex: 1; font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid #ddd; border-radius: 8px; background: #f9f8f5; color: #1a1a1a; outline: none; transition: border-color 0.15s; }
+  .apikey-row input:focus { border-color: #7F77DD; }
+  .apikey-save-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid #7F77DD; background: transparent; color: #7F77DD; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; white-space: nowrap; transition: background 0.15s; }
+  .apikey-save-btn:hover { background: #EEEDFE; }
+  .apikey-note { font-size: 11px; color: #aaa; margin-top: 7px; line-height: 1.5; }
+  .apikey-note a { color: #7F77DD; text-decoration: none; }
+  .apikey-note a:hover { text-decoration: underline; }
+  .apikey-saved-badge { font-size: 11px; color: #27a06b; font-weight: 600; margin-top: 6px; display: none; }
+  .apikey-warn { font-size: 12px; color: #c0392b; margin-top: 6px; display: none; }
 </style>
 </head>
 <body>
@@ -116,6 +129,20 @@
       <h4>Carlos Ruiz</h4>
       <p>Creative Ops Manager · EA</p>
     </div>
+  </div>
+
+  <div class="apikey-section">
+    <div class="section-label" style="margin-bottom:8px;">Anthropic API key</div>
+    <div class="apikey-row">
+      <input type="password" id="apiKeyInput" placeholder="sk-ant-..." autocomplete="off" />
+      <button class="apikey-save-btn" onclick="saveApiKey()">Save key</button>
+    </div>
+    <div class="apikey-saved-badge" id="apiKeySavedBadge">Key saved to browser storage</div>
+    <div class="apikey-warn" id="apiKeyWarn">An API key is required to generate messages.</div>
+    <p class="apikey-note">
+      Your key is stored only in your browser's localStorage and never sent anywhere except directly to Anthropic.
+      Get a key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>.
+    </p>
   </div>
 
   <div class="card">
@@ -294,6 +321,14 @@ async function generateMessage() {
     return;
   }
 
+  const apiKey = localStorage.getItem("meshyAnthropicKey") || "";
+  if (!apiKey) {
+    document.getElementById("apiKeyWarn").style.display = "block";
+    document.getElementById("apiKeyInput").focus();
+    return;
+  }
+  document.getElementById("apiKeyWarn").style.display = "none";
+
   const btn = document.getElementById("genBtn");
   btn.disabled = true;
   document.getElementById("btnIcon").innerHTML = '<span class="spinner"></span>';
@@ -325,9 +360,14 @@ Output ONLY the message text. No subject line, no label, no preamble.`;
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-5",
         max_tokens: 1000,
         messages: [{ role: "user", content: prompt }]
       })
@@ -338,7 +378,7 @@ Output ONLY the message text. No subject line, no label, no preamble.`;
     document.getElementById("outputArea").style.display = "block";
     document.getElementById("status").textContent = "Message generated for " + name + " at " + company;
   } catch (e) {
-    document.getElementById("status").textContent = "Error connecting to AI. Please try again.";
+    document.getElementById("status").textContent = "Error: " + (e.message || "Could not connect to Anthropic. Check your API key and try again.");
   }
 
   btn.disabled = false;
@@ -362,6 +402,28 @@ function cp(id, btn) {
     setTimeout(() => btn.textContent = "Copy message", 2000);
   });
 }
+
+function saveApiKey() {
+  const val = document.getElementById("apiKeyInput").value.trim();
+  if (!val) {
+    document.getElementById("apiKeyWarn").style.display = "block";
+    return;
+  }
+  localStorage.setItem("meshyAnthropicKey", val);
+  const badge = document.getElementById("apiKeySavedBadge");
+  badge.style.display = "block";
+  document.getElementById("apiKeyWarn").style.display = "none";
+  setTimeout(() => { badge.style.display = "none"; }, 3000);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const saved = localStorage.getItem("meshyAnthropicKey");
+  if (saved) {
+    document.getElementById("apiKeyInput").value = saved;
+    document.getElementById("apiKeySavedBadge").style.display = "block";
+    setTimeout(() => { document.getElementById("apiKeySavedBadge").style.display = "none"; }, 3000);
+  }
+});
 </script>
 </body>
 </html>
